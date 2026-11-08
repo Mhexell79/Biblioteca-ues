@@ -1,13 +1,5 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
- */
 package com.biblioteca.modelo;
 
-/**
- *
- * @author Dr Pc
- */
-public class Prestamo {
-    
-}
+import java.time.LocalDate;
+
+public record Prestamo(String id, String idUsuario, String idMaterial, LocalDate fecha, LocalDate vence, boolean activo) { }

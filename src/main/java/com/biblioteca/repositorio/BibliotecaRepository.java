@@ -10,14 +10,13 @@ import com.biblioteca.modelo.Usuario;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Updates.set;
 import com.biblioteca.servicio.PasswordUtil;
-
+//Clase biblioteca
 public class BibliotecaRepository {
     private final MongoCollection<Document> usuarios, materiales, prestamos;
     public BibliotecaRepository(MongoDatabase db) {

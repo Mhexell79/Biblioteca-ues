@@ -19,11 +19,15 @@ public class BibliotecaFrame extends JFrame {
     public BibliotecaFrame(BibliotecaRepository repo, Usuario actual) {
         super("Biblioteca UES | " + actual.nombre()); this.repo = repo; this.actual = actual; setDefaultCloseOperation(EXIT_ON_CLOSE); setSize(900, 560); setLocationRelativeTo(null);
         JTabbedPane tabs = new JTabbedPane(); tabs.add("Materiales", tablePanel(mat, "Agregar material", this::agregarMaterial));
-        tabs.add("Usuarios", tablePanel(usr, "Registrar usuario", this::agregarUsuario));
-        if (actual.tipo().equalsIgnoreCase("Docente") || actual.tipo().equalsIgnoreCase("Bibliotecario")) tabs.add("Préstamos", tablePanel(pres, "Registrar préstamo", this::prestar));
+         boolean esPersonal = actual.tipo().equalsIgnoreCase("Docente") || actual.tipo().equalsIgnoreCase("Bibliotecario");
+        if (esPersonal) {
+            tabs.add("Usuarios", tablePanel(usr, "Registrar usuario", this::agregarUsuario));
+            tabs.add("Préstamos", tablePanel(pres, "Registrar préstamo", this::prestar));
+        }
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton borrarUsuario = new JButton("Eliminar usuario"); borrarUsuario.addActionListener(e -> eliminarUsuario()); footer.add(borrarUsuario);
         JButton devolver = new JButton("Registrar devolución"); devolver.addActionListener(e -> devolver()); footer.add(devolver);
+        borrarUsuario.setVisible(esPersonal); 
         JButton salir = new JButton("Salir del sistema"); salir.addActionListener(e -> salir()); footer.add(salir);
         add(tabs, BorderLayout.CENTER); add(footer, BorderLayout.SOUTH); refrescar();
     }

@@ -63,6 +63,7 @@ public class BibliotecaRepository {
             throw new IllegalArgumentException("No se puede eliminar: el material tiene un préstamo activo.");
         }
         return materiales.deleteOne(eq("_id", id)).getDeletedCount() > 0;
+  
     }
     public Material buscarMaterial(String id) { Document d = materiales.find(eq("_id", id)).first(); return d == null ? null : material(d); }
     public Usuario buscarUsuario(String id) { Document d = usuarios.find(eq("_id", id)).first(); return d == null ? null : usuario(d); }

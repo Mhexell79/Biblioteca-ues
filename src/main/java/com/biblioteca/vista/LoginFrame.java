@@ -48,6 +48,11 @@ public class LoginFrame extends JFrame {
                     JOptionPane.showMessageDialog(this, "Correo o contraseña incorrectos."); 
                     return; 
                 }
+                if(!u.activo()){
+                    JOptionPane.showMessageDialog(this, "Esta cuenta se encuentra inactiva ","Acceso Denegado", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+     
                 
                 // Si el acceso es válido, abre el menú principal pasándole los datos del usuario
                 new BibliotecaFrame(repo, u).setVisible(true); 

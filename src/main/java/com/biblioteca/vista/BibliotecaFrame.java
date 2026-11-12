@@ -11,45 +11,41 @@ import java.time.LocalDate;
 import java.util.List;
 import static javax.swing.WindowConstants.EXIT_ON_CLOSE;
 
-// Clase principal de la interfaz gráfica, hereda de JFrame
 public class BibliotecaFrame extends JFrame {
 
     private final BibliotecaRepository repo;
     private final Usuario actual;
     
-    // Modelos de tabla: definen las columnas para los listados de materiales, usuarios y préstamos
+    // Modelos de tabla actualizados (Proceso 1 y Proceso 2)
     private final DefaultTableModel mat = model("Código", "Tipo", "Título", "Año", "Editorial", "Disponibles", "Autor / Edición", "ISBN / Volumen");
-    private final DefaultTableModel usr = model("ID", "Nombre", "Correo", "Tipo");
+    private final DefaultTableModel usr = model("Código", "Nombre", "Documento", "Contacto", "Correo", "Tipo", "Estado");
     private final DefaultTableModel pres = model("ID", "Usuario", "Material", "Fecha", "Vence", "Activo");
 
-    // Constructor: configura el tamaño, posición y los elementos visuales de la ventana
     public BibliotecaFrame(BibliotecaRepository repo, Usuario actual) {
-        super("Biblioteca UES | " + actual.nombre()); // Título de la ventana
+        super("Biblioteca UES | " + actual.nombre());
         this.repo = repo;
         this.actual = actual;
         
-        setDefaultCloseOperation(EXIT_ON_CLOSE); // Cierra el programa al darle a la 'X'
-        setSize(980, 560);
-        setLocationRelativeTo(null); // Centra la ventana en la pantalla
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(1020, 580);
+        setLocationRelativeTo(null);
         
-        JTabbedPane tabs = new JTabbedPane(); // Crea un sistema de pestañas
-        tabs.add("Materiales", panelMateriales()); // Pestaña completa del Proceso 1
+        JTabbedPane tabs = new JTabbedPane();
+        tabs.add("Materiales", panelMateriales());
         
-        // Verifica si el usuario tiene permisos administrativos para mostrarle la pestaña de Usuarios
         boolean esPersonal = actual.tipo().equalsIgnoreCase("Docente") || actual.tipo().equalsIgnoreCase("Bibliotecario");
         if (esPersonal) {
-            tabs.add("Usuarios", tablePanel(usr, "Registrar usuario", this::agregarUsuario));
+            tabs.add("Usuarios", panelUsuarios()); // Pestaña completa del Proceso 2
         }
         
         tabs.add("Préstamos", tablePanel(pres, "Registrar préstamo", this::prestar));
         
-        // Panel inferior (footer) para los botones de acción global
         JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         
         JButton borrarUsuario = new JButton("Eliminar usuario");
         borrarUsuario.addActionListener(e -> eliminarUsuario());
         footer.add(borrarUsuario);
-        borrarUsuario.setVisible(esPersonal); // Solo los administradores pueden ver este botón
+        borrarUsuario.setVisible(esPersonal);
         
         JButton borrarMaterial = new JButton("Eliminar material");
         borrarMaterial.addActionListener(e -> eliminarMaterial());
@@ -63,15 +59,14 @@ public class BibliotecaFrame extends JFrame {
         salir.addActionListener(e -> salir());
         footer.add(salir);
         
-        // Agrega las pestañas en el centro y los botones en la parte inferior
         add(tabs, BorderLayout.CENTER);
         add(footer, BorderLayout.SOUTH);
         
-        // Carga los datos de MongoDB en las tablas por primera vez
         refrescar();
     }
 
-    // Panel especializado para el Proceso 1 (Registrar, Modificar, Buscar y Consultar catálogo)
+    // ==================== PANEL PROCESO 1: MATERIALES ====================
+
     private JPanel panelMateriales() {
         JPanel p = new JPanel(new BorderLayout());
         JTable tablaMat = new JTable(mat);
@@ -93,7 +88,6 @@ public class BibliotecaFrame extends JFrame {
             formularioMaterial(repo.buscarMaterial(codigo));
         });
 
-        // Controles de búsqueda (Subproceso 1.4)
         JComboBox<String> filtro = new JComboBox<>(new String[]{"Todos", "Código", "Título", "Autor", "Tipo"});
         JTextField txtBuscar = new JTextField(14);
         JButton btnBuscar = new JButton("Buscar");
@@ -120,12 +114,11 @@ public class BibliotecaFrame extends JFrame {
         return p;
     }
 
-    // Formulario unificado para Registrar (1.1-1.3) y Modificar (1.6) materiales
     private void formularioMaterial(Material existente) {
         boolean esEdicion = existente != null;
 
         JTextField id = new JTextField(esEdicion ? existente.id() : "");
-        id.setEnabled(!esEdicion); // El código único no se edita
+        id.setEnabled(!esEdicion);
 
         JComboBox<String> tipo = new JComboBox<>(new String[]{"Libro", "Revista"});
         if (esEdicion) tipo.setSelectedItem(existente.tipo());
@@ -151,16 +144,10 @@ public class BibliotecaFrame extends JFrame {
         tipo.addActionListener(e -> actualizarCampos.run());
 
         Object[] f = {
-            "Código único *:", id,
-            "Tipo *:", tipo,
-            "Título *:", titulo,
-            "Año de publicación *:", anio,
-            "Editorial *:", editorial,
-            "Cantidad disponible *:", cantidad,
-            "Autor (Libro):", autor,
-            "ISBN (Libro):", isbn,
-            "N° Edición (Revista):", edicion,
-            "Volumen (Revista):", volumen
+            "Código único *:", id, "Tipo *:", tipo, "Título *:", titulo,
+            "Año de publicación *:", anio, "Editorial *:", editorial, "Cantidad disponible *:", cantidad,
+            "Autor (Libro):", autor, "ISBN (Libro):", isbn,
+            "N° Edición (Revista):", edicion, "Volumen (Revista):", volumen
         };
 
         if (JOptionPane.showConfirmDialog(this, f, esEdicion ? "Modificar Material" : "Registrar Material", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
@@ -168,27 +155,12 @@ public class BibliotecaFrame extends JFrame {
         }
 
         try {
-            int anioNum;
-            int cantNum;
-            try {
-                anioNum = Integer.parseInt(required(anio));
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("El año de publicación debe ser un número entero válido.");
-            }
-            try {
-                cantNum = Integer.parseInt(required(cantidad));
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("La cantidad disponible debe ser un número entero válido.");
-            }
-
+            int anioNum = Integer.parseInt(required(anio));
+            int cantNum = Integer.parseInt(required(cantidad));
             String tipoSel = (String) tipo.getSelectedItem();
+
             Material m = new Material(
-                required(id).toUpperCase(),
-                tipoSel,
-                required(titulo),
-                anioNum,
-                required(editorial),
-                cantNum,
+                required(id).toUpperCase(), tipoSel, required(titulo), anioNum, required(editorial), cantNum,
                 "Libro".equals(tipoSel) ? autor.getText().trim() : "",
                 "Libro".equals(tipoSel) ? isbn.getText().trim() : "",
                 "Revista".equals(tipoSel) ? edicion.getText().trim() : "",
@@ -203,12 +175,161 @@ public class BibliotecaFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Material registrado correctamente.");
             }
             refrescar();
+        } catch (NumberFormatException ex) {
+            error(new IllegalArgumentException("El año y la cantidad disponible deben ser números enteros válidos."));
         } catch (Exception ex) {
             error(ex);
         }
     }
 
-    // Método auxiliar para crear un panel estándar con tabla y botones
+    // ==================== PANEL PROCESO 2: USUARIOS ====================
+
+    private JPanel panelUsuarios() {
+        JPanel p = new JPanel(new BorderLayout());
+        JTable tablaUsr = new JTable(usr);
+        p.add(new JScrollPane(tablaUsr), BorderLayout.CENTER);
+
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT));
+
+        // Subproceso 2.1: Registrar usuario
+        JButton btnRegistrar = new JButton("Registrar usuario");
+        btnRegistrar.addActionListener(e -> formularioUsuario(null));
+
+        // Subproceso 2.4: Modificar usuario
+        JButton btnModificar = new JButton("Modificar usuario");
+        btnModificar.addActionListener(e -> {
+            int fila = tablaUsr.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla para modificarlo.");
+                return;
+            }
+            String codigo = (String) usr.getValueAt(fila, 0);
+            formularioUsuario(repo.buscarUsuario(codigo));
+        });
+
+        // Subproceso 2.5: Inactivar o reactivar usuario
+        JButton btnEstado = new JButton("Activar / Inactivar");
+        btnEstado.addActionListener(e -> {
+            int fila = tablaUsr.getSelectedRow();
+            if (fila < 0) {
+                JOptionPane.showMessageDialog(this, "Selecciona un usuario de la tabla para cambiar su estado.");
+                return;
+            }
+            String codigo = (String) usr.getValueAt(fila, 0);
+            if (codigo.equals(actual.id())) {
+                JOptionPane.showMessageDialog(this, "No puedes inactivar tu propia cuenta en sesión.", "Acción no permitida", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            try {
+                Usuario seleccionado = repo.buscarUsuario(codigo);
+                boolean nuevoEstado = !seleccionado.activo();
+                repo.cambiarEstadoUsuario(codigo, nuevoEstado);
+                refrescar();
+                JOptionPane.showMessageDialog(this, "Usuario " + (nuevoEstado ? "habilitado" : "inactivado") + " correctamente.");
+            } catch (Exception ex) {
+                error(ex);
+            }
+        });
+
+        // Subproceso 2.2: Buscar usuario por código, documento o nombre
+        JComboBox<String> filtro = new JComboBox<>(new String[]{"Todos", "Código", "Documento", "Nombre"});
+        JTextField txtBuscar = new JTextField(13);
+        JButton btnBuscar = new JButton("Buscar");
+        btnBuscar.addActionListener(e -> {
+            List<Usuario> resultados = repo.buscarUsuarios((String) filtro.getSelectedItem(), txtBuscar.getText());
+            cargarTablaUsuarios(resultados, true);
+        });
+
+        JButton btnTodos = new JButton("Mostrar todos");
+        btnTodos.addActionListener(e -> {
+            txtBuscar.setText("");
+            cargarTablaUsuarios(repo.usuarios(), false);
+        });
+
+        bar.add(btnRegistrar);
+        bar.add(btnModificar);
+        bar.add(btnEstado);
+        bar.add(new JLabel(" | Buscar:"));
+        bar.add(filtro);
+        bar.add(txtBuscar);
+        bar.add(btnBuscar);
+        bar.add(btnTodos);
+
+        p.add(bar, BorderLayout.NORTH);
+        return p;
+    }
+
+    // Formulario unificado para Registrar (2.1) y Modificar (2.4) usuarios
+    private void formularioUsuario(Usuario existente) {
+        boolean esEdicion = existente != null;
+
+        JTextField id = new JTextField(esEdicion ? existente.id() : "");
+        id.setEnabled(!esEdicion);
+
+        JTextField nombre = new JTextField(esEdicion ? existente.nombre() : "");
+        JTextField documento = new JTextField(esEdicion ? existente.documento() : "");
+        JTextField contacto = new JTextField(esEdicion ? existente.contacto() : "");
+        JTextField email = new JTextField(esEdicion ? existente.email() : "");
+
+        JComboBox<String> tipo = new JComboBox<>(new String[]{"Estudiante", "Docente", "Bibliotecario", "General"});
+        if (esEdicion) tipo.setSelectedItem(existente.tipo());
+
+        JPasswordField password = new JPasswordField();
+        JCheckBox chkActivo = new JCheckBox("Usuario habilitado para préstamos", !esEdicion || existente.activo());
+        if (esEdicion && existente.id().equals(actual.id())) {
+            chkActivo.setEnabled(false); // Evita que el usuario logueado se auto-desactive
+        }
+
+        Object[] f = {
+            "Código único *:", id,
+            "Nombre completo *:", nombre,
+            "Documento (DUI/Carnet) *:", documento,
+            "Datos de contacto (Teléfono) *:", contacto,
+            "Correo electrónico *:", email,
+            "Tipo de usuario *:", tipo,
+            esEdicion ? "Nueva contraseña (dejar vacío para mantener):" : "Contraseña *:", password,
+            "Estado:", chkActivo
+        };
+
+        if (JOptionPane.showConfirmDialog(this, f, esEdicion ? "Modificar Usuario" : "Registrar Usuario", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
+            return;
+        }
+
+        try {
+            String passTexto = new String(password.getPassword());
+            if (!esEdicion && passTexto.isBlank()) {
+                throw new IllegalArgumentException("La contraseña es obligatoria para nuevos usuarios.");
+            }
+            String hashFinal = (esEdicion && passTexto.isBlank())
+                    ? existente.passwordHash()
+                    : PasswordUtil.hash(passTexto);
+
+            Usuario u = new Usuario(
+                required(id).toUpperCase(),
+                required(nombre),
+                required(documento),
+                required(contacto),
+                required(email).toLowerCase(),
+                (String) tipo.getSelectedItem(),
+                hashFinal,
+                chkActivo.isSelected()
+            );
+
+            if (esEdicion) {
+                repo.modificarUsuario(u);
+                JOptionPane.showMessageDialog(this, "Usuario actualizado correctamente.");
+            } else {
+                repo.guardarUsuario(u);
+                JOptionPane.showMessageDialog(this, "Usuario registrado correctamente.");
+            }
+            refrescar();
+        } catch (Exception ex) {
+            error(ex);
+        }
+    }
+
+    // ==================== PRÉSTAMOS, DEVOLUCIONES Y ACCIONES GLOBALES ====================
+
     private JPanel tablePanel(DefaultTableModel model, String label, Runnable action) {
         JPanel p = new JPanel(new BorderLayout());
         p.add(new JScrollPane(new JTable(model)), BorderLayout.CENTER);
@@ -227,42 +348,23 @@ public class BibliotecaFrame extends JFrame {
         return p;
     }
 
-    // Muestra un formulario emergente para registrar un nuevo usuario
-    private void agregarUsuario() {
-        JTextField id = new JTextField(), nombre = new JTextField(), email = new JTextField();
-        JPasswordField password = new JPasswordField();
-        JComboBox<String> tipo = new JComboBox<>(new String[]{"Estudiante", "Docente", "General"});
-        Object[] f = {"ID", id, "Nombre", nombre, "Correo", email, "Tipo", tipo, "Contraseña", password};
-        
-        if (JOptionPane.showConfirmDialog(this, f, "Registrar usuario", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
-            return;
-        }
-        try {
-            String mail = required(email).toLowerCase();
-            if (repo.existeEmail(mail)) {
-                throw new IllegalArgumentException("Ese correo ya está registrado.");
-            }
-            repo.guardarUsuario(new Usuario(required(id), required(nombre), mail, (String) tipo.getSelectedItem(), PasswordUtil.hash(new String(password.getPassword()))));
-            refrescar();
-        } catch (Exception ex) {
-            error(ex);
-        }
-    }
-
-    // Gestiona el proceso de prestar un material a un usuario
     private void prestar() {
         JTextField uid = new JTextField(), mid = new JTextField();
-        Object[] f = {"ID usuario", uid, "ID material", mid};
+        Object[] f = {"Código usuario", uid, "Código material", mid};
         
         if (JOptionPane.showConfirmDialog(this, f, "Registrar préstamo", JOptionPane.OK_CANCEL_OPTION) != JOptionPane.OK_OPTION) {
             return;
         }
         try {
-            String u = required(uid), m = required(mid).toUpperCase();
+            String u = required(uid).toUpperCase(), m = required(mid).toUpperCase();
+            Usuario usuario = repo.buscarUsuario(u);
             Material material = repo.buscarMaterial(m);
             
-            if (repo.buscarUsuario(u) == null || material == null) {
+            if (usuario == null || material == null) {
                 throw new IllegalArgumentException("Usuario o material no existe.");
+            }
+            if (!usuario.activo()) {
+                throw new IllegalArgumentException("El usuario está inactivo y no tiene permiso para solicitar préstamos.");
             }
             if (!material.estaDisponible()) {
                 throw new IllegalArgumentException("El material no tiene ejemplares disponibles.");
@@ -278,7 +380,6 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Solicita el ID de un préstamo para marcarlo como devuelto
     private void devolver() {
         String id = JOptionPane.showInputDialog(this, "ID del préstamo:");
         if (id == null || id.isBlank()) {
@@ -292,18 +393,17 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Maneja la eliminación de un usuario con validaciones estrictas
     private void eliminarUsuario() {
         if (!(actual.tipo().equalsIgnoreCase("Docente") || actual.tipo().equalsIgnoreCase("Bibliotecario"))) {
             JOptionPane.showMessageDialog(this, "Solo el personal bibliotecario puede eliminar usuarios.", "Acceso denegado", JOptionPane.WARNING_MESSAGE);
             return;
         }
         
-        String id = JOptionPane.showInputDialog(this, "ID del usuario que desea eliminar:");
+        String id = JOptionPane.showInputDialog(this, "Código del usuario que desea eliminar:");
         if (id == null || id.isBlank()) {
             return;
         }
-        id = id.trim();
+        id = id.trim().toUpperCase();
         try {
             Usuario usuario = repo.buscarUsuario(id);
             if (usuario == null) {
@@ -317,7 +417,7 @@ public class BibliotecaFrame extends JFrame {
             }
             
             int confirmacion = JOptionPane.showConfirmDialog(this,
-                    "¿Eliminar este usuario?\n\nID: " + usuario.id() + "\nNombre: " + usuario.nombre() + "\nCorreo: " + usuario.email(),
+                    "¿Eliminar este usuario?\n\nCódigo: " + usuario.id() + "\nNombre: " + usuario.nombre() + "\nDocumento: " + usuario.documento(),
                     "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             if (confirmacion == JOptionPane.YES_OPTION) {
                 if (repo.eliminarUsuario(id)) {
@@ -332,9 +432,8 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Maneja la eliminación de un material
     private void eliminarMaterial() {
-        String id = JOptionPane.showInputDialog(this, "ID del material que desea eliminar:");
+        String id = JOptionPane.showInputDialog(this, "Código del material que desea eliminar:");
         if (id == null || id.isBlank()) {
             return;
         }
@@ -346,7 +445,7 @@ public class BibliotecaFrame extends JFrame {
             }
             
             int confirmacion = JOptionPane.showConfirmDialog(this,
-                    "¿Eliminar este material?\n\nID: " + material.id() + "\nTítulo: " + material.titulo(),
+                    "¿Eliminar este material?\n\nCódigo: " + material.id() + "\nTítulo: " + material.titulo(),
                     "Confirmar eliminación", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
             
             if (confirmacion == JOptionPane.YES_OPTION) {
@@ -362,7 +461,6 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Cierra completamente el programa pidiendo confirmación primero
     private void salir() {
         int opcion = JOptionPane.showConfirmDialog(this, "¿Está seguro de que desea salir del sistema?", "Confirmar salida", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (opcion == JOptionPane.YES_OPTION) {
@@ -370,11 +468,10 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Carga la tabla de materiales y avisa si una búsqueda no tuvo resultados (Sección 4.5)
     private void cargarTablaMateriales(List<Material> lista, boolean esBusqueda) {
         mat.setRowCount(0);
         if (lista.isEmpty() && esBusqueda) {
-            JOptionPane.showMessageDialog(this, "La consulta no arrojó resultados.", "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "La consulta de materiales no arrojó resultados.", "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
         for (Material m : lista) {
@@ -384,14 +481,22 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Limpia las tablas visuales y vuelve a cargar toda la información desde la base de datos
+    private void cargarTablaUsuarios(List<Usuario> lista, boolean esBusqueda) {
+        usr.setRowCount(0);
+        if (lista.isEmpty() && esBusqueda) {
+            JOptionPane.showMessageDialog(this, "La consulta de usuarios no arrojó resultados.", "Sin resultados", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        for (Usuario u : lista) {
+            usr.addRow(new Object[]{
+                u.id(), u.nombre(), u.documento(), u.contacto(), u.email(), u.tipo(), u.activo() ? "Habilitado" : "Inactivo"
+            });
+        }
+    }
+
     private void refrescar() {
         cargarTablaMateriales(repo.materiales(), false);
-        
-        usr.setRowCount(0);
-        for (Usuario u : repo.usuarios()) {
-            usr.addRow(new Object[]{u.id(), u.nombre(), u.email(), u.tipo()});
-        }
+        cargarTablaUsuarios(repo.usuarios(), false);
         
         pres.setRowCount(0);
         for (Document p : repo.prestamos()) {
@@ -399,7 +504,6 @@ public class BibliotecaFrame extends JFrame {
         }
     }
 
-    // Utilidad: extrae el texto de un campo y lanza un error si el usuario lo dejó vacío
     private static String required(JTextField f) {
         String s = f.getText().trim();
         if (s.isEmpty()) {
@@ -408,7 +512,6 @@ public class BibliotecaFrame extends JFrame {
         return s;
     }
 
-    // Utilidad: crea un modelo de tabla cuyas celdas no se pueden editar con doble clic
     private static DefaultTableModel model(String... cols) {
         return new DefaultTableModel(cols, 0) {
             @Override
@@ -418,7 +521,6 @@ public class BibliotecaFrame extends JFrame {
         };
     }
 
-    // Utilidad: muestra una ventana de error estándar con el mensaje de la excepción capturada
     private void error(Exception e) {
         JOptionPane.showMessageDialog(this, e.getMessage(), "No se pudo completar", JOptionPane.ERROR_MESSAGE);
     }

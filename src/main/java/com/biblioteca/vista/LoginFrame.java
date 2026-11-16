@@ -63,7 +63,7 @@ public class LoginFrame extends JFrame {
             }
         });
         
-        // Excelente detalle: Permite activar el botón "Ingresar" presionando la tecla "Enter"
+      //Permite activar el botón "Ingresar" tocando la tecla "Enter"
         getRootPane().setDefaultButton(entrar);
     }
 }
